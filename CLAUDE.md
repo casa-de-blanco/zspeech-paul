@@ -114,3 +114,17 @@ Key facts, verified empirically against the actual binary:
 then check the result is a valid, non-silent RIFF/WAVE 16-bit PCM file
 (`file` command should say exactly that; a silent/near-empty file usually
 means the `db_path`/`licensefile`/speaker-ID combination broke again).
+
+Final built image: 992MB (down from an earlier 4.75GB `docker commit`-based
+prototype that still had the abandoned SAPI5/balcon/winetricks approach and
+build tooling baked in).
+
+## Where this is actually used
+
+Consumed by `zoe-infra-v2`'s `weather-report-generator` Argo WorkflowTemplate
+(`paul-tts` template) for narration. That repo can't build this image via
+its in-cluster `buildkit` WorkflowTemplate — the Dockerfile needs the
+`.gitignore`d proprietary installer files — so it's built and pushed
+locally to `registry.verde.zoe/library/zspeech-paul:<tag>` instead. See
+that repo's `kubernetes/apps/argo-workflows/manifests/weather-report-generator/CLAUDE.md`
+for the consumer-side details.
