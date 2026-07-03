@@ -1,8 +1,8 @@
-version: '3'
+version: "3"
 
 vars:
   IMAGE: registry.verde.zoe/library/zspeech-paul
-  TAG: '{{.TAG | default "1.1.0"}}'
+  TAG: '{{.TAG | default "1.2.0"}}'
   INSTALLER_DIR: '{{.INSTALLER_DIR | default (joinPath (env "HOME") "Downloads" "NWS Neospeech Paul")}}'
   INSTALLER_FILES: >-
     setup.exe ISSetup.dll layout.bin setup.ini setup.inx
