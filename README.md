@@ -45,6 +45,15 @@ docker cp zspeech-paul:/output/out.wav ./out.wav
 
 Output: 16-bit PCM WAV, mono, 16kHz.
 
+Text can include [VTML](CLAUDE.md#vtml--pronunciation-control) tags for
+phoneme overrides, pauses, and prosody, e.g.:
+
+```bash
+docker exec zspeech-paul synth \
+  '<vtml_phoneme alphabet="x-cmu" ph="T AH0 K EY1 M AH">Tekamah</vtml_phoneme><vtml_pause time="500"/>testing' \
+  /output/out.wav
+```
+
 ## How it works / background
 
 See `CLAUDE.md` for the full technical writeup — what `vt_eng.dll`

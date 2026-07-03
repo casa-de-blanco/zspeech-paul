@@ -24,6 +24,17 @@ typedef short (*pFunc_VT_TextToFile)(int fmt, char *tts_text, char *filename, in
 #define VT_FILE_FMT_S16PCM_WAVE 4
 #define WAV_HEADER_SIZE 44
 
+/* VTML tags (<vtml_phoneme>, <vtml_pause>, <vtml_pitch>, ...) embedded in
+ * the text argument are parsed unconditionally by VT_TextToFile_ENG --
+ * confirmed empirically by probing every texttype value from -1 to 3 with
+ * a <vtml_pause time="5000"/> tag and a phoneme override on a one-letter
+ * word: both produced identical, correctly-lengthened output at every
+ * texttype value tested (pause added ~5s of audio; the phoneme override
+ * produced ~3x the duration of the plain letter). texttype does not gate
+ * VTML parsing, so it's left at -1 (engine default) below like the other
+ * unused optional params -- no separate "enable VTML" value exists to set.
+ */
+
 /* This install is stuck in demo mode (see CLAUDE.md -- no local fix found:
  * no license file ships with the installer, no serial-entry screen exists,
  * the "Verification Center" is a dead link to NeoSpeech's defunct web

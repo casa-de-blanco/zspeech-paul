@@ -151,6 +151,52 @@ whatever text was requested.
   multiple distinct sentences: no watermark wording present, only the
   requested text.
 
+## VTML / pronunciation control
+
+`vt_eng.dll` supports **VTML** (VoiceText Markup Language) -- an XML-ish
+tag set NeoSpeech documented for controlling pronunciation, phonemes,
+pauses, and prosody inline in the text passed to `VT_TextToFile_ENG`.
+Confirmed via the official NeoSpeech "VTML Tag Set User's Guide v3.9",
+found through eas.tools/tts-docs.html →
+`assets/tts_backend_codes/vtml.pdf` (that page 403s to non-browser HTTP
+clients incl. WebFetch -- use a browser-UA `curl` to fetch it).
+
+- **VTML tags are parsed unconditionally by `synth`/`vtwav.exe` today --
+  no code change was needed.** `VT_TextToFile_ENG`'s `texttype` param
+  (the 10th arg) looked like the obvious candidate for an "enable VTML
+  parsing" switch, but empirical testing found it has **no effect**:
+  probing every value from `-1` to `3` with a `<vtml_pause time="5000"/>`
+  tag and a phoneme override on a one-letter word produced byte-identical
+  results at every value (pause added ~5s of audio; the phoneme override
+  produced ~3x the duration of the plain letter, both regardless of
+  `texttype`). So `vtwav.c` keeps `texttype=-1` like the other unused
+  optional params -- there's no separate value to set.
+- Key tags: `<vtml_phoneme alphabet="..." ph="...">word</vtml_phoneme>`,
+  `<vtml_pause time="msec"/>`, `<vtml_pitch value="50-200">...</vtml_pitch>`,
+  `<vtml_speed value="50-400">...</vtml_speed>`,
+  `<vtml_volume value="0-500">...</vtml_volume>`,
+  `<vtml_sub alias="...">text</vtml_sub>`,
+  `<vtml_sayas interpret-as="..." format="...">text</vtml_sayas>`,
+  `<vtml_break level="0-3"/>`, `<vtml_partofsp part="...">text</vtml_partofsp>`.
+- `alphabet="x-cmu"` (CMU/ARPAbet with stress digits, e.g.
+  `"T AH0 K EY1 M AH"` for "Tekamah") is the most human-writable phoneme
+  alphabet for English; `ipa` (decimal Unicode codepoints) is also
+  supported but far less writable by hand. `x-worldbet`/`x-sampa`/`x-sapi`
+  are also accepted for English; `x-pentax`/`x-pinyin` are Japanese/Chinese
+  -only, not usable here.
+- Per-tag limits (English synthesizer): enclosed text/`alias`/`ph` max 512
+  bytes; `ph` value max 64 phonetic symbols.
+- The engine's built-in text-normalization already correctly expands
+  numbers, dates, times, currency, measures (`mph`, `°F`), addresses, and
+  common abbreviations on its own (see the VTML guide's Appendix B) -- so
+  VTML is only needed for proper nouns/acronyms the normalizer gets wrong
+  and for deliberate pacing/emphasis, not for numeric/unit formatting.
+- Verified end-to-end against the actual published
+  `registry.verde.zoe/library/zspeech-paul:1.1.0` image: a mixed
+  `<vtml_pause>` + `<vtml_phoneme>` narration string round-tripped through
+  `synth` into a valid, watermark-stripped, correctly-lengthened WAV (see
+  git history for the exact test if this needs re-verifying).
+
 ## Known Wine gotchas hit while building this
 
 - **`wineserver -w` after `wine wineboot --init` hangs indefinitely** if a
