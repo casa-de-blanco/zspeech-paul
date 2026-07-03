@@ -1,0 +1,43 @@
+version: '3'
+
+vars:
+  IMAGE: registry.verde.zoe/library/zspeech-paul
+  TAG: '{{.TAG | default "1.1.0"}}'
+  INSTALLER_DIR: '{{.INSTALLER_DIR | default (joinPath (env "HOME") "Downloads" "NWS Neospeech Paul")}}'
+  INSTALLER_FILES: >-
+    setup.exe ISSetup.dll layout.bin setup.ini setup.inx
+    data1.cab data1.hdr data2.cab
+    0x0409.ini 0x0411.ini 0x0412.ini setup.bmp
+
+tasks:
+  default:
+    desc: Build and push the zspeech-paul image (stages proprietary installer files, builds, pushes, cleans up)
+    cmds:
+      - task: stage-installer
+      - task: build
+      - task: push
+      - task: clean-installer
+
+  stage-installer:
+    desc: Copy the proprietary VT-Paul-M16 installer files into the repo root (gitignored, not committed)
+    cmds:
+      - for f in {{.INSTALLER_FILES}}; do cp "{{.INSTALLER_DIR}}/$f" .; done
+    status:
+      - test -f setup.exe
+
+  build:
+    desc: Build the Docker image
+    cmds:
+      - docker build --platform linux/amd64 -t {{.IMAGE}}:{{.TAG}} .
+
+  push:
+    desc: Push the Docker image
+    cmds:
+      - docker push {{.IMAGE}}:{{.TAG}}
+
+  clean-installer:
+    desc: Remove the staged proprietary installer files from the repo root (moves to Trash, not permanent delete)
+    cmds:
+      - trash {{.INSTALLER_FILES}}
+    status:
+      - test ! -f setup.exe
