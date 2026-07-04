@@ -10,7 +10,7 @@ if [ -z "$TEXT" ] || [ -z "$OUT" ]; then
   exit 1
 fi
 
-BINDIR="$WINEPREFIX/drive_c/Program Files/VW/VT/Paul/M16/bin"
+BINDIR="$WINEPREFIX/drive_c/Program Files/VW/VT/${VOICE_NAME:-Paul}/${VOICE_MODEL:-M16}/${BIN_SUBDIR:-bin}"
 WINOUT="Z:$(echo "$OUT" | tr / '\\')"
 
 cd "$BINDIR"

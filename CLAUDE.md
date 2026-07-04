@@ -231,10 +231,74 @@ clients incl. WebFetch -- use a browser-UA `curl` to fetch it).
 - `Dockerfile` — multi-stage: builder (wine+xvfb+fluxbox+xdotool+mingw,
   runs the one-time GUI install + compiles `vtwav.exe` + prunes unused
   install-tree files), runtime (wine only + the pruned install tree).
+  Reads the proprietary installer files from a `VOICE_DIR` build-context
+  subdirectory (default `paul/`, not repo root) via a whole-directory
+  `COPY` -- each voice's installer file set can differ (see Violeta below).
 - `install-automation.sh` — xdotool-driven InstallShield automation
   (Welcome → License → Destination → poll for ~490MB copy → Finish).
 - `vtwav.c` — the direct `vt_eng.dll` caller, compiled at build time.
 - `synth.sh` / `entrypoint.sh` — the runtime `synth "text" /out.wav` CLI.
+
+### Voice parameterization (Paul + Violeta, not a general framework)
+
+`Dockerfile`/`install-automation.sh`/`synth.sh`/`vtwav.c` take
+`VOICE_DIR`/`VOICE_NAME`/`VOICE_MODEL`/`SPEAKER_ID`/`DLL_NAME`/
+`EXPORT_SUFFIX`/`BIN_SUBDIR`/`EXPECTED_INSTALL_MB` as build args. `Taskfile.yml`
+picks the right values for `task build VOICE=paul` / `VOICE=violeta` — see
+its `vars:` block for the exact values. This is deliberately scoped to
+these two voices, not a speculative N-voice framework: Violeta's package
+turned out to differ from Paul's in more than just naming, discovered by
+directly inspecting its InstallShield cabinets with `unshield`/`strings`
+(both installed via `brew` for this investigation) rather than by running
+the installer:
+
+- Engine DLL is `vt_spa_violeta16.dll` (fully voice-specific filename, not
+  a generic `vt_spa.dll`), confirmed via `unshield l violeta/data1.cab`.
+  It ships a real SAPI5 wrapper too (`vtspasapi50.dll`) — unlike Paul,
+  where the SAPI5 branding is cosmetic (see top of this file) — but the
+  direct-DLL approach still applies; we just never touch `vtspasapi50.dll`.
+- Installs under `App_Executables\lib\`, not `App_Executables\bin\` like
+  Paul — hence `BIN_SUBDIR`.
+- Export function suffix is `_SPA` (`EXPORT_SUFFIX`) — confirmed by
+  `i686-w64-mingw32-objdump -p vt_spa_violeta16.dll`'s export table
+  against a real completed install (`VT_LOADTTS_SPA`, `VT_UNLOADTTS_SPA`,
+  `VT_TextToFile_SPA` all present), not just inferred by analogy.
+- Single-language installer: `setup.ini`'s `[Languages]` section is
+  `Supported=0x0409` only, and unlike Paul's `data1.cab` (which contains
+  `<Support>0x0411/0x0412 String Tables>` entries — confirmed via
+  `unshield l`, and why Paul needs those two extra `.ini` files at all),
+  Violeta's cab has none. So Violeta's `violeta/` directory only needs
+  `0x0409.ini`, not all three.
+- Its installer file set spans a real second disk (`data3.cab`, listed in
+  `layout.bin`'s own manifest, readable via `strings`) — received as
+  separate `Disk1`/`Disk2` folders and flattened into one `violeta/`
+  directory before building. Confirmed no disk-swap dialog appears once
+  flattened (same as Paul's own `data1.cab`/`data2.cab` pair) — a plain
+  `install-automation.sh` run (no disk-swap handling) completed the copy.
+- **Real install destination is `C:\Program Files\VW\VT\Violeta\M16-SAPI5`
+  — not `...\Violeta\M16`.** The InstallShield product name
+  (`VT-Violeta-M16-SAPI5`) carries a `-SAPI5` suffix into the actual
+  install dir that Paul's product name (`VT-Paul-M16`) does not. This was
+  the reason the first real build attempt failed silently (the copy-size
+  poll loop watched the wrong path and saw 0MB for the entire ~19-minute
+  install, resending keystrokes that were already landing correctly on
+  the real wizard). Found by driving a debug container's installer
+  interactively (`xdotool` + `xwd`/`convert` screenshots piped through
+  `docker cp`) instead of guessing again — the Destination Folder screen
+  shows the real path directly. `VOICE_MODEL=M16-SAPI5` in `Taskfile.yml`
+  reflects this. Note the install's inner `data-violeta/` subtree still
+  uses the plain `M16` (no `-SAPI5`) for its nested model dir — the
+  Dockerfile's placeholder-touch step strips any `-VOICE_MODEL` suffix
+  (`${VOICE_MODEL%%-*}`) to account for this split.
+- `SPEAKER_ID=1` confirmed correct by successfully running `vtwav.exe`
+  against the real install (`VT_LOADTTS_SPA`/`VT_TextToFile_SPA` both
+  succeeded, produced a valid 16-bit PCM WAV).
+- Two other copies (`paul2/`, `violeta2/`) were investigated and discarded:
+  `paul2/` was a different, incomplete InstallShield packaging of the
+  exact same Paul voice data (byte-identical `data1.cab`/`data2.cab`
+  sizes); `violeta2/` was missing the engine DLL and GUI tools entirely in
+  both its cabs, with a `merged-gen.dat` (the core voice model) only ~8%
+  the size of `violeta/`'s — not installable, not just a smaller edition.
 
 ## Verification
 

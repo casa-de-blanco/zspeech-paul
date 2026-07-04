@@ -1,17 +1,9 @@
 # NeoSpeech installer files are proprietary/copyrighted -- never commit them.
-# Building this image requires supplying your own legally-obtained copy
-# alongside this repo (see README.md).
-setup.exe
-setup.bmp
-setup.ini
-setup.inx
-ISSetup.dll
-layout.bin
-data1.cab
-data1.hdr
-data2.cab
-0x*.ini
-installer/
+# Building this image requires supplying your own legally-obtained copy in a
+# per-voice subdirectory (see README.md). Add new voice dirs here the same
+# way if more get introduced.
+/paul/
+/violeta/
 
 # build/debug artifacts
 *.log

@@ -38,16 +38,28 @@ You need your own legally-obtained copy of the `VT-Paul-M16` installer
 (NWS Neospeech Paul.zip). It is **not included in this repo** — it's
 proprietary NeoSpeech/VoiceWare software, licensed as a runtime engine
 that (per its own EULA) prohibits redistributing generated audio output
-without a separate agreement. Place these files in the repo root before
-building:
+without a separate agreement. Place these files in a `paul/` subdirectory
+before building:
 
 ```
-setup.exe  ISSetup.dll  layout.bin  setup.ini  setup.inx
-data1.cab  data1.hdr  data2.cab
-0x0409.ini  0x0411.ini  0x0412.ini  setup.bmp
+paul/setup.exe  paul/ISSetup.dll  paul/layout.bin  paul/setup.ini  paul/setup.inx
+paul/data1.cab  paul/data1.hdr  paul/data2.cab
+paul/0x0409.ini  paul/0x0411.ini  paul/0x0412.ini  paul/setup.bmp
 ```
 
-(`.gitignore` already excludes these and it is not necessary to commit these files for a local docker build)
+(`.gitignore` already excludes `paul/` and it is not necessary to commit these files for a local docker build)
+
+**Violeta (Spanish voice) is also supported**, the same way, from a
+`violeta/` subdirectory. Its installer is structurally different from
+Paul's (different engine DLL name, installs to a `lib\` subdirectory
+instead of `bin\`, single-language installer, and its files may come
+split across `Disk1`/`Disk2` folders — flatten those into `violeta/`
+directly before building, the same flat layout as `paul/`). See
+CLAUDE.md for the exact values and how they were determined; the
+Dockerfile's `VOICE_DIR`/`VOICE_NAME`/`VOICE_MODEL`/`SPEAKER_ID`/
+`DLL_NAME`/`EXPORT_SUFFIX`/`BIN_SUBDIR`/`EXPECTED_INSTALL_MB` build args
+are what make this work, but this is parameterized for exactly these two
+voices, not a general framework for arbitrary NeoSpeech voices.
 
 Build needs `linux/amd64`. On Apple Silicon, enable Docker Desktop's
 "Use Rosetta for x86/amd64 emulation" (Settings → General) first — plain
@@ -57,8 +69,18 @@ package installs.
 ## Build
 
 ```bash
+task build VOICE=paul      # or VOICE=violeta
+```
+
+or directly:
+
+```bash
 docker build --platform linux/amd64 -t zspeech-paul .
 ```
+
+(the raw `docker build` form defaults to Paul's build args; use `task
+build` for Violeta so the right `--build-arg` values get passed — see
+`Taskfile.yml`.)
 
 This runs a one-time automated InstallShield install (via Xvfb + fluxbox +
 xdotool) inside the build, so it takes a while (large voice database

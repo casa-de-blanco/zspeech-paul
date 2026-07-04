@@ -55,15 +55,16 @@ click_through() {
   sleep 10
 }
 
-TARGET="/wine/drive_c/Program Files/VW/VT/Paul/M16"
+TARGET="/wine/drive_c/Program Files/VW/VT/${VOICE_NAME:-Paul}/${VOICE_MODEL:-M16}"
 click_through
 
-log "polling for file copy to reach ~480MB (resending click sequence if no progress)"
+EXPECTED_INSTALL_MB="${EXPECTED_INSTALL_MB:-480}"
+log "polling for file copy to reach ~${EXPECTED_INSTALL_MB}MB (resending click sequence if no progress)"
 attempt=1
 for i in $(seq 1 120); do
   SIZE=$(du -sm "$TARGET" 2>/dev/null | cut -f1 || echo 0)
   log "  poll $i (attempt $attempt): ${SIZE:-0}MB"
-  if [ "${SIZE:-0}" -ge 480 ]; then
+  if [ "${SIZE:-0}" -ge "$EXPECTED_INSTALL_MB" ]; then
     break
   fi
   # After ~40s of zero progress, assume the click sequence was lost and
@@ -84,5 +85,5 @@ DISPLAY=:99 timeout 10 xdotool key Return
 sleep 5
 
 log "verifying install"
-test -f "$TARGET/bin/vt_eng.dll"
+test -f "$TARGET/${BIN_SUBDIR:-bin}/${DLL_NAME:-vt_eng.dll}"
 log "done"

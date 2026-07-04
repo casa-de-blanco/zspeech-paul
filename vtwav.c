@@ -48,7 +48,31 @@ typedef short (*pFunc_VT_TextToFile)(int fmt, char *tts_text, char *filename, in
  * strip_watermark() below and the Dockerfile step that populates
  * bin/refwm/ at build time.
  */
-#define REFWM_DIR "C:\\Program Files\\VW\\VT\\Paul\\M16\\bin\\refwm\\"
+/* Overridable at compile time via -DVOICE_NAME=..., -DVOICE_MODEL=...,
+ * -DSPEAKER_ID=..., -DDLL_NAME=..., -DEXPORT_SUFFIX=..., -DBIN_SUBDIR=...
+ * (see Dockerfile). Defaults match Paul; Violeta overrides all six --
+ * this is parameterized for exactly these two voices, not a general
+ * N-voice framework (see CLAUDE.md). */
+#ifndef VOICE_NAME
+#define VOICE_NAME "Paul"
+#endif
+#ifndef VOICE_MODEL
+#define VOICE_MODEL "M16"
+#endif
+#ifndef SPEAKER_ID
+#define SPEAKER_ID 1
+#endif
+#ifndef DLL_NAME
+#define DLL_NAME "vt_eng.dll"
+#endif
+#ifndef EXPORT_SUFFIX
+#define EXPORT_SUFFIX "ENG"
+#endif
+#ifndef BIN_SUBDIR
+#define BIN_SUBDIR "bin"
+#endif
+
+#define REFWM_DIR "C:\\Program Files\\VW\\VT\\" VOICE_NAME "\\" VOICE_MODEL "\\" BIN_SUBDIR "\\refwm\\"
 #define REFWM_MAX 64
 
 static unsigned char *read_file(const char *path, long *out_len)
@@ -137,19 +161,19 @@ int main(int argc, char *argv[])
         fprintf(stderr, "       vtwav.exe --capture-watermark <output.pcm>  (build-time only)\n");
         return 2;
     }
-    const char *db_path = "C:\\Program Files\\VW\\VT\\Paul\\M16";
-    const char *license_path = "C:\\Program Files\\VW\\VT\\Paul\\M16\\data-common\\verify\\verification.txt";
-    int speakerID = 1; /* 0 = "Kate" (not installed in this package), 1 = Paul */
+    const char *db_path = "C:\\Program Files\\VW\\VT\\" VOICE_NAME "\\" VOICE_MODEL;
+    const char *license_path = "C:\\Program Files\\VW\\VT\\" VOICE_NAME "\\" VOICE_MODEL "\\data-common\\verify\\verification.txt";
+    int speakerID = SPEAKER_ID; /* 0 = "Kate" (not installed in this package), 1 = Paul */
 
-    HMODULE hModule = LoadLibraryA("vt_eng.dll");
+    HMODULE hModule = LoadLibraryA(DLL_NAME);
     if (!hModule) {
-        fprintf(stderr, "LoadLibrary(vt_eng.dll) failed: %lu\n", GetLastError());
+        fprintf(stderr, "LoadLibrary(%s) failed: %lu\n", DLL_NAME, GetLastError());
         return 1;
     }
 
-    pFunc_VT_LOADTTS Func_LOADTTS = (pFunc_VT_LOADTTS)GetProcAddress(hModule, "VT_LOADTTS_ENG");
-    pFunc_VT_UNLOADTTS Func_UNLOADTTS = (pFunc_VT_UNLOADTTS)GetProcAddress(hModule, "VT_UNLOADTTS_ENG");
-    pFunc_VT_TextToFile Func_TextToFile = (pFunc_VT_TextToFile)GetProcAddress(hModule, "VT_TextToFile_ENG");
+    pFunc_VT_LOADTTS Func_LOADTTS = (pFunc_VT_LOADTTS)GetProcAddress(hModule, "VT_LOADTTS_" EXPORT_SUFFIX);
+    pFunc_VT_UNLOADTTS Func_UNLOADTTS = (pFunc_VT_UNLOADTTS)GetProcAddress(hModule, "VT_UNLOADTTS_" EXPORT_SUFFIX);
+    pFunc_VT_TextToFile Func_TextToFile = (pFunc_VT_TextToFile)GetProcAddress(hModule, "VT_TextToFile_" EXPORT_SUFFIX);
     if (!Func_LOADTTS || !Func_UNLOADTTS || !Func_TextToFile) {
         fprintf(stderr, "GetProcAddress failed\n");
         return 1;
@@ -160,7 +184,7 @@ int main(int argc, char *argv[])
      * of VT_LOADTTS_EXT_ENG). Only negative values are real errors. */
     short ret = Func_LOADTTS(NULL, speakerID, (char*)db_path, (char*)license_path);
     if (ret < 0) {
-        fprintf(stderr, "VT_LOADTTS_ENG failed: %d\n", ret);
+        fprintf(stderr, "VT_LOADTTS_" EXPORT_SUFFIX " failed: %d\n", ret);
         return 1;
     }
 
@@ -175,7 +199,7 @@ int main(int argc, char *argv[])
                                       -1, -1, -1, -1, -1, -1);
         Func_UNLOADTTS(speakerID);
         if (ret2 != 1) {
-            fprintf(stderr, "VT_TextToFile_ENG (capture) failed: %d\n", ret2);
+            fprintf(stderr, "VT_TextToFile_" EXPORT_SUFFIX " (capture) failed: %d\n", ret2);
             return 1;
         }
         long len;
@@ -202,7 +226,7 @@ int main(int argc, char *argv[])
     Func_UNLOADTTS(speakerID);
 
     if (ret2 != 1) {
-        fprintf(stderr, "VT_TextToFile_ENG failed: %d\n", ret2);
+        fprintf(stderr, "VT_TextToFile_" EXPORT_SUFFIX " failed: %d\n", ret2);
         return 1;
     }
 

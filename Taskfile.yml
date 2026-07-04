@@ -5,11 +5,27 @@ dotenv: ['.env']
 vars:
   IMAGE: '{{.IMAGE}}'
   TAG: '{{.TAG | default "1.2.0"}}'
+  VOICE: '{{.VOICE | default "paul"}}'
   INSTALLER_DIR: '{{.INSTALLER_DIR | default (joinPath (env "HOME") "Downloads" "NWS Neospeech Paul")}}'
   INSTALLER_FILES: >-
     setup.exe ISSetup.dll layout.bin setup.ini setup.inx
     data1.cab data1.hdr data2.cab
     0x0409.ini 0x0411.ini 0x0412.ini setup.bmp
+  # Only two voices are actually supported (not a general framework) --
+  # see CLAUDE.md for how these values were determined (Violeta's values
+  # were confirmed by interactively driving its installer with screenshots,
+  # since a blind first build attempt failed against wrong guesses).
+  # SPEAKER_ID is the same for both so far, no per-voice branch needed.
+  VOICE_NAME: '{{if eq .VOICE "violeta"}}Violeta{{else}}Paul{{end}}'
+  # Violeta's InstallShield product name carries a "-SAPI5" suffix into its
+  # actual install dir (C:\...\VT\Violeta\M16-SAPI5\); Paul's does not.
+  VOICE_MODEL: '{{if eq .VOICE "violeta"}}M16-SAPI5{{else}}M16{{end}}'
+  SPEAKER_ID: '1'
+  DLL_NAME: '{{if eq .VOICE "violeta"}}vt_spa_violeta16.dll{{else}}vt_eng.dll{{end}}'
+  EXPORT_SUFFIX: '{{if eq .VOICE "violeta"}}SPA{{else}}ENG{{end}}'
+  BIN_SUBDIR: '{{if eq .VOICE "violeta"}}lib{{else}}bin{{end}}'
+  # Real install size confirmed at 698MB -- 700 would never be satisfied.
+  EXPECTED_INSTALL_MB: '{{if eq .VOICE "violeta"}}690{{else}}480{{end}}'
 
 tasks:
   default:
@@ -21,25 +37,36 @@ tasks:
       - task: clean-installer
 
   stage-installer:
-    desc: Copy the proprietary VT-Paul-M16 installer files into the repo root (gitignored, not committed)
+    desc: Copy the proprietary VT-Paul-M16 installer files into the voice subdirectory (gitignored, not committed)
     cmds:
-      - for f in {{.INSTALLER_FILES}}; do cp "{{.INSTALLER_DIR}}/$f" .; done
+      - mkdir -p {{.VOICE}}
+      - for f in {{.INSTALLER_FILES}}; do cp "{{.INSTALLER_DIR}}/$f" {{.VOICE}}/; done
     status:
-      - test -f setup.exe
+      - test -f {{.VOICE}}/setup.exe
 
   build:
-    desc: Build the Docker image
+    desc: 'Build the Docker image (usage: task build VOICE=paul|violeta)'
     cmds:
-      - docker build --platform linux/amd64 -t {{.IMAGE}}:{{.TAG}} .
+      - >-
+        docker build --platform linux/amd64
+        --build-arg VOICE_DIR={{.VOICE}}
+        --build-arg VOICE_NAME={{.VOICE_NAME}}
+        --build-arg VOICE_MODEL={{.VOICE_MODEL}}
+        --build-arg SPEAKER_ID={{.SPEAKER_ID}}
+        --build-arg DLL_NAME={{.DLL_NAME}}
+        --build-arg EXPORT_SUFFIX={{.EXPORT_SUFFIX}}
+        --build-arg BIN_SUBDIR={{.BIN_SUBDIR}}
+        --build-arg EXPECTED_INSTALL_MB={{.EXPECTED_INSTALL_MB}}
+        -t {{.IMAGE}}{{if ne .VOICE "paul"}}-{{.VOICE}}{{end}}:{{.TAG}} .
 
   push:
     desc: Push the Docker image
     cmds:
-      - docker push {{.IMAGE}}:{{.TAG}}
+      - docker push {{.IMAGE}}{{if ne .VOICE "paul"}}-{{.VOICE}}{{end}}:{{.TAG}}
 
   clean-installer:
-    desc: Remove the staged proprietary installer files from the repo root (moves to Trash, not permanent delete)
+    desc: Remove the staged proprietary installer files (moves to Trash, not permanent delete)
     cmds:
-      - trash {{.INSTALLER_FILES}}
+      - trash {{.VOICE}}
     status:
-      - test ! -f setup.exe
+      - test ! -d {{.VOICE}}
