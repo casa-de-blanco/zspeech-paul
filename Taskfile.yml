@@ -11,21 +11,7 @@ vars:
     setup.exe ISSetup.dll layout.bin setup.ini setup.inx
     data1.cab data1.hdr data2.cab
     0x0409.ini 0x0411.ini 0x0412.ini setup.bmp
-  # Only two voices are actually supported (not a general framework) --
-  # see CLAUDE.md for how these values were determined (Violeta's values
-  # were confirmed by interactively driving its installer with screenshots,
-  # since a blind first build attempt failed against wrong guesses).
-  # SPEAKER_ID is the same for both so far, no per-voice branch needed.
-  VOICE_NAME: '{{if eq .VOICE "violeta"}}Violeta{{else}}Paul{{end}}'
-  # Violeta's InstallShield product name carries a "-SAPI5" suffix into its
-  # actual install dir (C:\...\VT\Violeta\M16-SAPI5\); Paul's does not.
-  VOICE_MODEL: '{{if eq .VOICE "violeta"}}M16-SAPI5{{else}}M16{{end}}'
   SPEAKER_ID: "1"
-  DLL_NAME: '{{if eq .VOICE "violeta"}}vt_spa_violeta16.dll{{else}}vt_eng.dll{{end}}'
-  EXPORT_SUFFIX: '{{if eq .VOICE "violeta"}}SPA{{else}}ENG{{end}}'
-  BIN_SUBDIR: '{{if eq .VOICE "violeta"}}lib{{else}}bin{{end}}'
-  # Real install size confirmed at 698MB -- 700 would never be satisfied.
-  EXPECTED_INSTALL_MB: '{{if eq .VOICE "violeta"}}690{{else}}480{{end}}'
 
 tasks:
   default:
@@ -46,6 +32,28 @@ tasks:
 
   build:
     desc: "Build the Docker image (usage: task build VOICE=paul|violeta)"
+    # These are task-local (not global) vars so that VOICE is re-resolved
+    # per call -- go-task compiles global `vars:` once per process using the
+    # CLI-level VOICE, so calling `build` twice with different VOICE
+    # overrides in one run (see `test`/`test-voice` below) would silently
+    # reuse the first call's derived values if these lived in the global
+    # vars block instead.
+    #
+    # Only two voices are actually supported (not a general framework) --
+    # see CLAUDE.md for how these values were determined (Violeta's values
+    # were confirmed by interactively driving its installer with screenshots,
+    # since a blind first build attempt failed against wrong guesses).
+    # SPEAKER_ID is the same for both so far, no per-voice branch needed.
+    vars:
+      VOICE_NAME: '{{if eq .VOICE "violeta"}}Violeta{{else}}Paul{{end}}'
+      # Violeta's InstallShield product name carries a "-SAPI5" suffix into
+      # its actual install dir (C:\...\VT\Violeta\M16-SAPI5\); Paul's does not.
+      VOICE_MODEL: '{{if eq .VOICE "violeta"}}M16-SAPI5{{else}}M16{{end}}'
+      DLL_NAME: '{{if eq .VOICE "violeta"}}vt_spa_violeta16.dll{{else}}vt_eng.dll{{end}}'
+      EXPORT_SUFFIX: '{{if eq .VOICE "violeta"}}SPA{{else}}ENG{{end}}'
+      BIN_SUBDIR: '{{if eq .VOICE "violeta"}}lib{{else}}bin{{end}}'
+      # Real install size confirmed at 698MB -- 700 would never be satisfied.
+      EXPECTED_INSTALL_MB: '{{if eq .VOICE "violeta"}}690{{else}}480{{end}}'
     cmds:
       - >-
         docker build --platform linux/amd64
@@ -63,6 +71,23 @@ tasks:
     desc: Push the Docker image
     cmds:
       - docker push {{.IMAGE}}{{if ne .VOICE "paul"}}-{{.VOICE}}{{end}}:{{.TAG}}
+
+  test:
+    desc: "Build paul and violeta images and verify each produces valid, non-silent synthesized audio (e2e)"
+    cmds:
+      - for: [paul, violeta]
+        task: test-voice
+        vars:
+          VOICE: "{{.ITEM}}"
+
+  test-voice:
+    desc: "Build one voice image and verify its synth output (internal helper, use `task test`)"
+    internal: true
+    cmds:
+      - task: build
+        vars:
+          VOICE: "{{.VOICE}}"
+      - bash verify-synth.sh {{.IMAGE}}{{if ne .VOICE "paul"}}-{{.VOICE}}{{end}}:{{.TAG}} {{.VOICE}}
 
   clean-installer:
     desc: Remove the staged proprietary installer files (moves to Trash, not permanent delete)
