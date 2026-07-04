@@ -1,5 +1,5 @@
 services:
-  zspeech-paul:
+  zspeech-nwr-tts:
     build: .
     platform: linux/amd64
     volumes:

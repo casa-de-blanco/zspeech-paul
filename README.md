@@ -1,4 +1,4 @@
-# zspeech-paul
+# zspeech-nwr-tts
 
 Generate WAV audio from NeoSpeech VoiceText's "Paul" voice in a Linux
 container. Headless — no GUI, no display, no SAPI5 needed at runtime.
@@ -75,7 +75,7 @@ task build VOICE=paul      # or VOICE=violeta
 or directly:
 
 ```bash
-docker build --platform linux/amd64 -t zspeech-paul .
+docker build --platform linux/amd64 -t zspeech-nwr-tts .
 ```
 
 (the raw `docker build` form defaults to Paul's build args; use `task
@@ -91,7 +91,7 @@ copy). No interaction needed.
 One-liner: synthesizes and exits, no daemon/exec/cp dance needed.
 
 ```bash
-docker run --rm --platform linux/amd64 -v "$PWD:/output" zspeech-paul synth "Text to speak" /output/out.wav
+docker run --rm --platform linux/amd64 -v "$PWD:/output" zspeech-nwr-tts synth "Text to speak" /output/out.wav
 ```
 
 Output: 16-bit PCM WAV, mono, 16kHz, written to `./out.wav` on the host.
@@ -99,7 +99,7 @@ Output: 16-bit PCM WAV, mono, 16kHz, written to `./out.wav` on the host.
 Text can include VTML tags for phoneme overrides, pauses, and prosody, e.g.:
 
 ```bash
-docker run --rm --platform linux/amd64 -v "$PWD:/output" zspeech-paul synth \
+docker run --rm --platform linux/amd64 -v "$PWD:/output" zspeech-nwr-tts synth \
   '<vtml_phoneme alphabet="x-cmu" ph="T AH0 K EY1 M AH">Tekamah</vtml_phoneme><vtml_pause time="500"/>testing' \
   /output/out.wav
 ```

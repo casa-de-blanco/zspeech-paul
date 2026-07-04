@@ -1,6 +1,6 @@
 # Copy your own legally-obtained VT-Paul-M16 installer files into the
 # VOICE_DIR subdirectory first (default: paul/, see README.md), then:
-#   docker build --platform linux/amd64 -t zspeech-paul .
+#   docker build --platform linux/amd64 -t zspeech-nwr-tts .
 
 FROM debian:bookworm-slim AS builder
 

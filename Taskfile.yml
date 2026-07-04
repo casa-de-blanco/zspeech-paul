@@ -15,7 +15,7 @@ vars:
 
 tasks:
   default:
-    desc: Build and push the zspeech-paul image (stages proprietary installer files, builds, pushes, cleans up)
+    desc: Build and push the zspeech-nwr-tts image (stages proprietary installer files, builds, pushes, cleans up)
     cmds:
       - task: stage-installer
       - task: build

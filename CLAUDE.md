@@ -1,4 +1,4 @@
-# zspeech-paul
+# zspeech-nwr-tts
 
 Docker image that generates WAV audio from NeoSpeech VoiceText's "Paul"
 voice (`VT-Paul-M16`), on Linux, headless, no GUI/display at runtime.
@@ -302,7 +302,7 @@ the installer:
 
 ## Verification
 
-`docker run -d --name zspeech-paul -v out:/output zspeech-paul && docker exec zspeech-paul synth "test" /output/test.wav`
+`docker run -d --name zspeech-nwr-tts -v out:/output zspeech-nwr-tts && docker exec zspeech-nwr-tts synth "test" /output/test.wav`
 then check the result is a valid, non-silent RIFF/WAVE 16-bit PCM file
 (`file` command should say exactly that; a silent/near-empty file usually
 means the `db_path`/`licensefile`/speaker-ID combination broke again).
